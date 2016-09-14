@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/name5566/leaf/gate"
+	"fmt"
 )
 
 func init() {
@@ -10,11 +10,14 @@ func init() {
 }
 
 func rpcNewAgent(args []interface{}) {
-	a := args[0].(gate.Agent)
-	_ = a
+	fmt.Println("new agent")
+	//a := args[0].(gate.Agent)
+	//_ = a
+
 }
 
 func rpcCloseAgent(args []interface{}) {
-	a := args[0].(gate.Agent)
-	_ = a
+	fmt.Println("close agent")
+	//a := args[0].(gate.Agent)
+	//_ = a
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 )
@@ -21,7 +22,6 @@ func connectToServer() net.Conn {
 }
 
 func sendData(msg_body interface{}) {
-	fmt.Println(msg_body)
 	msg_id := reflect.TypeOf(msg_body).Name()
 	req_body_bytes, err := json.Marshal(msg_body)
 	if err != nil {
@@ -33,7 +33,7 @@ func sendData(msg_body interface{}) {
 	b.WriteString("}")
 
 	var data = b.Bytes()
-	fmt.Println(string(data))
+	//fmt.Println(string(data))
 	// len + data
 	m := make([]byte, 2+len(data))
 
@@ -43,6 +43,12 @@ func sendData(msg_body interface{}) {
 	copy(m[2:], data)
 	// 发送消息
 	conn.Write(m)
+}
+
+func doLogin(name string) {
+	var msg_body = msg.LoginReq{}
+	msg_body.Name = name
+	sendData(msg_body)
 }
 
 func tryMatch() {
@@ -56,8 +62,28 @@ func doSelectAction(command string) {
 	sendData(msg_body)
 }
 
-func main() {
-	conn = connectToServer()
+func onRecieveMsg() {
+	for {
+		var bytes_len [2]byte
+		if _, err := io.ReadFull(conn, bytes_len[0:2]); err != nil {
+			panic(err)
+		}
+		msg_len := binary.BigEndian.Uint16(bytes_len[0:2])
+		bytes := make([]byte, msg_len)
+		if _, err := io.ReadFull(conn, bytes); err != nil {
+			panic(err)
+		}
+		fmt.Println(string(bytes))
+	}
+}
+
+func ClientOp() {
+	fmt.Println("enter your name:")
+	var name string
+	fmt.Scan(&name)
+
+	doLogin(name)
+
 	for {
 		var command string
 		fmt.Scan(&command)
@@ -74,4 +100,17 @@ func main() {
 			break
 		}
 	}
+}
+
+func main() {
+	conn = connectToServer()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+			conn.Close()
+		}
+	}()
+
+	go ClientOp()
+	onRecieveMsg()
 }

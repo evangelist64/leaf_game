@@ -8,7 +8,8 @@ import (
 var Processor = json.NewProcessor()
 
 func init() {
-	// 这里我们注册了一个 JSON 消息 Hello
+	Processor.Register(&LoginReq{})
+	Processor.Register(&LoginRep{})
 	Processor.Register(&DoMatchReq{})
 	Processor.Register(&SelectActionReq{})
 }
