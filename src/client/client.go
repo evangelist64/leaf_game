@@ -110,7 +110,6 @@ func main() {
 			conn.Close()
 		}
 	}()
-
 	go ClientOp()
 	onRecieveMsg()
 }
