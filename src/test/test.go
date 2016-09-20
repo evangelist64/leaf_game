@@ -12,9 +12,5 @@ func hello() {
 }
 
 func main() {
-	hello()
-
-	for {
-		go hello()
-	}
+	go hello()
 }

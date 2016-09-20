@@ -1,80 +1,37 @@
 package main
 
 import (
-	"bytes"
-	"client/msg"
-	"encoding/binary"
+	"client/network"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
-	"reflect"
 )
 
-var conn net.Conn
-
-func connectToServer() net.Conn {
-	conn, err := net.Dial("tcp", "127.0.0.1:3563")
-	if err != nil {
-		panic(err)
-	}
-	return conn
-}
-
-func sendData(msg_body interface{}) {
-	msg_id := reflect.TypeOf(msg_body).Name()
-	req_body_bytes, err := json.Marshal(msg_body)
-	if err != nil {
-		panic(err)
-	}
-	b := bytes.Buffer{}
-	b.WriteString("{\"" + msg_id + "\":")
-	b.WriteString(string(req_body_bytes))
-	b.WriteString("}")
-
-	var data = b.Bytes()
-	//fmt.Println(string(data))
-	// len + data
-	m := make([]byte, 2+len(data))
-
-	// 默认使用大端序
-	binary.BigEndian.PutUint16(m, uint16(len(data)))
-
-	copy(m[2:], data)
-	// 发送消息
-	conn.Write(m)
+type UserData struct {
+	state int //1已登录 2匹配中 3游戏中
+	score int
 }
 
 func doLogin(name string) {
-	var msg_body = msg.LoginReq{}
+	var msg_body = network.LoginReq{}
 	msg_body.Name = name
-	sendData(msg_body)
+	network.CallProc(msg_body, "LoginRep", func(json_data json.RawMessage) {
+		var rep = &network.LoginRep{}
+		if err := json.Unmarshal(json_data, &rep); err != nil {
+			panic(err)
+		}
+		fmt.Println(rep.Result)
+	})
 }
 
 func tryMatch() {
-	var msg_body = msg.DoMatchReq{}
-	sendData(msg_body)
+	var msg_body = network.DoMatchReq{}
+	network.SendProc(msg_body)
 }
 
 func doSelectAction(command string) {
-	var msg_body = msg.SelectActionReq{}
+	var msg_body = network.SelectActionReq{}
 	msg_body.Action = command
-	sendData(msg_body)
-}
-
-func onRecieveMsg() {
-	for {
-		var bytes_len [2]byte
-		if _, err := io.ReadFull(conn, bytes_len[0:2]); err != nil {
-			panic(err)
-		}
-		msg_len := binary.BigEndian.Uint16(bytes_len[0:2])
-		bytes := make([]byte, msg_len)
-		if _, err := io.ReadFull(conn, bytes); err != nil {
-			panic(err)
-		}
-		fmt.Println(string(bytes))
-	}
+	network.SendProc(msg_body)
 }
 
 func ClientOp() {
@@ -103,13 +60,13 @@ func ClientOp() {
 }
 
 func main() {
-	conn = connectToServer()
+	network.ConnectToServer()
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(r)
-			conn.Close()
+			network.CloseConn()
 		}
 	}()
 	go ClientOp()
-	onRecieveMsg()
+	network.OnRecieveMsg()
 }
