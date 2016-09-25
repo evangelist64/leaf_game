@@ -10,6 +10,5 @@ func init() {
 	// 模块间使用 ChanRPC 通讯，消息路由也不例外
 	msg.Processor.SetRouter(&msg.LoginReq{}, game.ChanRPC)
 	msg.Processor.SetRouter(&msg.DoMatchReq{}, game.ChanRPC)
-	msg.Processor.SetRouter(&msg.SelectActionReq{}, game.ChanRPC)
-
+	msg.Processor.SetRouter(&msg.FireActionReq{}, game.ChanRPC)
 }

@@ -9,7 +9,9 @@ var Processor = json.NewProcessor()
 
 func init() {
 	Processor.Register(&LoginReq{})
-	Processor.Register(&LoginRep{})
 	Processor.Register(&DoMatchReq{})
-	Processor.Register(&SelectActionReq{})
+	Processor.Register(&FireActionReq{})
+	Processor.Register(&LoginRep{})
+	Processor.Register(&DoMatchRep{})
+	Processor.Register(&FireActionRep{})
 }

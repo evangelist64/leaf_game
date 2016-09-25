@@ -4,12 +4,22 @@ import (
 	"client/network"
 	"encoding/json"
 	"fmt"
+	"time"
+)
+
+const (
+	state_normal      = iota
+	state_in_matching = iota
+	state_in_counting = iota
+	state_in_game     = iota
 )
 
 type UserData struct {
-	state int //1已登录 2匹配中 3游戏中
-	score int
+	state int
 }
+
+var my_data UserData
+var match_timer *time.Timer
 
 func doLogin(name string) {
 	var msg_body = network.LoginReq{}
@@ -19,47 +29,95 @@ func doLogin(name string) {
 		if err := json.Unmarshal(json_data, &rep); err != nil {
 			panic(err)
 		}
-		fmt.Println(rep.Result)
+		if rep.Result == "login ok" {
+			fmt.Println("-------" + rep.Result + "-------")
+			my_data.state = state_normal
+			go ClientOp()
+		} else {
+			fmt.Println("can not login, please try again later")
+		}
 	})
 }
 
 func tryMatch() {
 	var msg_body = network.DoMatchReq{}
-	network.SendProc(msg_body)
+	network.CallProc(msg_body, "DoMatchRep", func(json_data json.RawMessage) {
+		var rep = &network.DoMatchRep{}
+		if err := json.Unmarshal(json_data, &rep); err != nil {
+			panic(err)
+		}
+		fmt.Println(rep.Result)
+		if rep.Result == "match ok" {
+			fmt.Println("-------" + rep.Result + "-------")
+			fmt.Println("you will fight againest \"" + rep.Enemy_name + "\"")
+			match_timer.Stop()
+
+			startGame()
+		} else {
+			fmt.Println("can not match anyone, please try again later")
+		}
+	})
+
+	my_data.state = state_in_matching
+	fmt.Println("in matching...")
+	match_timer = time.AfterFunc(time.Second*30, onMatchTimeout)
 }
 
-func doSelectAction(command string) {
-	var msg_body = network.SelectActionReq{}
-	msg_body.Action = command
+func onMatchTimeout() {
+	fmt.Println("can not match anyone, please try again later")
+	my_data.state = state_normal
+}
+
+func startGame() {
+	network.RegisterFunc("FireActionRep", func(json_data json.RawMessage) {
+		var rep = &network.FireActionRep{}
+		if err := json.Unmarshal(json_data, &rep); err != nil {
+			panic(err)
+		}
+		fmt.Println(rep.Result)
+		my_data.state = state_normal
+	})
+
+	my_data.state = state_in_game
+	fmt.Println("press enter button to fire, when you think the count reaches 0")
+	count := 10
+	count_down_timer := time.NewTicker(time.Second)
+	go func() {
+		for _ = range count_down_timer.C {
+			fmt.Println(count)
+			count = count - 1
+			if count <= 5 {
+				count_down_timer.Stop()
+				break
+			}
+		}
+	}()
+}
+
+func doFightAction() {
+	var msg_body = network.FireActionReq{}
 	network.SendProc(msg_body)
 }
 
 func ClientOp() {
-	fmt.Println("enter your name:")
-	var name string
-	fmt.Scan(&name)
 
-	doLogin(name)
-
+	fmt.Println("press \"match\" to start a game")
 	for {
 		var command string
-		fmt.Scan(&command)
+		fmt.Scanln(&command)
 
-		switch command {
-		case "match":
+		if my_data.state == state_normal && command == "match" {
 			tryMatch()
-			break
-		case "1", "2", "3":
-			doSelectAction(command)
-			break
-		default:
-			fmt.Println("unknown command")
-			break
+		} else if my_data.state == state_in_game {
+			doFightAction()
+		} else {
+			fmt.Println("can not do command:" + command)
 		}
 	}
 }
 
 func main() {
+
 	network.ConnectToServer()
 	defer func() {
 		if r := recover(); r != nil {
@@ -67,6 +125,12 @@ func main() {
 			network.CloseConn()
 		}
 	}()
-	go ClientOp()
+
+	fmt.Println("Welcome to cowboy dule game!")
+	fmt.Println("please enter your name:")
+	var name string
+	fmt.Scanln(&name)
+	doLogin(name)
+
 	network.OnRecieveMsg()
 }

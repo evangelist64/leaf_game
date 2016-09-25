@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"reflect"
@@ -19,6 +20,10 @@ func init() {
 func CallProc(send_msg interface{}, recv_id string, callback func(json.RawMessage)) {
 	proc_map[recv_id] = callback
 	SendProc(send_msg)
+}
+
+func RegisterFunc(recv_id string, callback func(json.RawMessage)) {
+	proc_map[recv_id] = callback
 }
 
 func SendProc(msg_body interface{}) {
@@ -72,6 +77,8 @@ func OnRecieveMsg() {
 			f := proc_map[k]
 			if f != nil {
 				f(v)
+			} else {
+				fmt.Println("can't find func by index " + k)
 			}
 		}
 	}

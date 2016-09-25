@@ -11,6 +11,14 @@ type LoginRep struct {
 type DoMatchReq struct {
 }
 
-type SelectActionReq struct {
-	Action string
+type DoMatchRep struct {
+	Enemy_name string
+	Result     string
+}
+
+type FireActionReq struct {
+}
+
+type FireActionRep struct {
+	Result string
 }
